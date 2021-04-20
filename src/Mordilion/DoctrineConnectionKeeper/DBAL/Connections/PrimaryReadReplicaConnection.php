@@ -11,12 +11,12 @@
 
 declare(strict_types=1);
 
-namespace Mordilion\Doctrine\DBAL\Connections;
+namespace Mordilion\DoctrineConnectionKeeper\DBAL\Connections;
 
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection as DBALPrimaryReadReplicaConnectionAlias;
 use Doctrine\DBAL;
-use Mordilion\Doctrine\DBAL\ConnectionTrait;
+use Mordilion\DoctrineConnectionKeeper\DBAL\ConnectionTrait;
 
 /**
  * @author Henning Huncke <mordilion@gmx.de>

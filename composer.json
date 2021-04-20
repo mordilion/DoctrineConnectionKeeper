@@ -18,7 +18,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Mordilion\\Doctrine\\": "src/Mordilion/Doctrine"
+            "Mordilion\\DoctrineConnectionKeeper\\": "src/Mordilion/DoctrineConnectionKeeper"
         }
     }
 }

@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace Mordilion\Doctrine\DBAL;
+namespace Mordilion\DoctrineConnectionKeeper\DBAL;
 
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Throwable;
