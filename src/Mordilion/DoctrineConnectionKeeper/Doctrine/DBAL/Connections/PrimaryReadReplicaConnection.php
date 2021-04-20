@@ -11,19 +11,23 @@
 
 declare(strict_types=1);
 
-namespace Mordilion\DoctrineConnectionKeeper\DBAL\Connections;
+namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\Connections;
 
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection as DBALPrimaryReadReplicaConnectionAlias;
 use Doctrine\DBAL;
-use Mordilion\DoctrineConnectionKeeper\DBAL\ConnectionTrait;
+use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\ConnectionInterface;
+use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\ConnectionTrait;
+use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\Statement;
 
 /**
  * @author Henning Huncke <mordilion@gmx.de>
  */
-class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias
+class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias implements ConnectionInterface
 {
-    use ConnectionTrait;
+    use ConnectionTrait {
+        ConnectionTrait::prepare as traitPrepare;
+    }
 
     /**
      * PrimaryReadReplicaConnection constructor.
@@ -38,5 +42,18 @@ class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias
         $this->handleParams($params['connection_keeper'] ?? []);
 
         parent::__construct($params, $driver, $config, $eventManager);
+    }
+
+    /**
+     * @param string $statement
+     *
+     * @return Statement
+     * @throws DBAL\Exception
+     */
+    public function prepare($statement)
+    {
+        $this->ensureConnectedToPrimary();
+
+        return $this->traitPrepare($statement);
     }
 }

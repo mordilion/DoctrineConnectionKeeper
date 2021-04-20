@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace Mordilion\DoctrineConnectionKeeper\DBAL;
+namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Configuration;
@@ -21,7 +21,7 @@ use Doctrine\DBAL\Driver;
 /**
  * @author Henning Huncke <mordilion@gmx.de>
  */
-class Connection extends DBALConnection
+class Connection extends DBALConnection implements ConnectionInterface
 {
     use ConnectionTrait;
 

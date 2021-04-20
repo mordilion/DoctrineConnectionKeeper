@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace Mordilion\DoctrineConnectionKeeper\DBAL;
+namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Throwable;
@@ -105,6 +105,55 @@ trait ConnectionTrait
     }
 
     /**
+     * @param callable      $tryCallable
+     * @param callable|null $catchCallable
+     */
+    public function handle(callable $tryCallable, ?callable $catchCallable = null): void
+    {
+        $attempt = 0;
+        $catchCallable = $catchCallable ?? function () { $this->close(); };
+
+        do {
+            $retry = false;
+
+            try {
+                $tryCallable();
+            } catch (Throwable $exception) {
+                $catchCallable();
+
+                if ($this->refreshOnException) {
+                    $this->refresh();
+                }
+
+                if (!$this->isGoneAwayException($exception)) {
+                    throw $exception;
+                }
+
+                $retry = $attempt < $this->reconnectAttempts;
+                $attempt++;
+            }
+        } while ($retry);
+    }
+
+    /**
+     * @param string $sql
+     *
+     * @return Statement
+     */
+    public function prepare($sql)
+    {
+        try {
+            $stmt = new Statement($sql, $this);
+        } catch (Throwable $exception) {
+            $this->handleExceptionDuringQuery($exception, $sql);
+        }
+
+        $stmt->setFetchMode($this->defaultFetchMode);
+
+        return $stmt;
+    }
+
+    /**
      * @return \Doctrine\DBAL\Driver\Statement
      */
     public function query()
@@ -157,37 +206,6 @@ trait ConnectionTrait
     protected function setRefreshOnException(bool $refreshOnException): void
     {
         $this->refreshOnException = $refreshOnException;
-    }
-
-    /**
-     * @param callable      $tryCallable
-     * @param callable|null $catchCallable
-     */
-    private function handle(callable $tryCallable, ?callable $catchCallable = null): void
-    {
-        $attempt = 0;
-        $catchCallable = $catchCallable ?? function () { $this->close(); };
-
-        do {
-            $retry = false;
-
-            try {
-                $tryCallable();
-            } catch (Throwable $exception) {
-                $catchCallable();
-
-                if ($this->refreshOnException) {
-                    $this->refresh();
-                }
-
-                if (!$this->isGoneAwayException($exception)) {
-                    throw $exception;
-                }
-
-                $retry = $attempt < $this->reconnectAttempts;
-                $attempt++;
-            }
-        } while ($retry);
     }
 
     /**
