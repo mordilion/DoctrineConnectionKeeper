@@ -40,7 +40,7 @@ class Statement extends DBALStatement
     public function execute($params = null)
     {
         /** @var ConnectionInterface $connection */
-        $connection = $this->conn->getWrappedConnection();
+        $connection = $this->conn;
         $result = false;
 
         $connection->handle(function () use (&$result, $params) {
