@@ -11,6 +11,8 @@
 
 declare(strict_types=1);
 
+namespace Mordilion\Doctrine\DBAL\Connections;
+
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection as DBALPrimaryReadReplicaConnectionAlias;
 use Doctrine\DBAL;
