@@ -1,5 +1,6 @@
 {
     "name": "mordilion/doctrine-connection-keeper",
+    "description": "A library to keep the Doctrine DBAL connection alive",
     "type": "library",
     "license": "MIT",
     "authors": [
