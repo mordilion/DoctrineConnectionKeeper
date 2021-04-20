@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\DBAL\Cache\QueryCacheProfile;
+use Doctrine\DBAL\ForwardCompatibility;
 use Throwable;
 
 /**
@@ -55,7 +56,7 @@ trait ConnectionTrait
      * @param array                  $types
      * @param QueryCacheProfile|null $qcp
      *
-     * @return \Doctrine\DBAL\ForwardCompatibility\DriverResultStatement|\Doctrine\DBAL\ForwardCompatibility\DriverStatement|\Doctrine\DBAL\ForwardCompatibility\Result
+     * @return ForwardCompatibility\DriverResultStatement|ForwardCompatibility\DriverStatement|ForwardCompatibility\Result
      */
     public function executeQuery($sql, array $params = [], $types = [], ?QueryCacheProfile $qcp = null)
     {
@@ -111,7 +112,6 @@ trait ConnectionTrait
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void
     {
         $attempt = 0;
-        $catchCallable = $catchCallable ?? function () { $this->close(); };
 
         do {
             $retry = false;
@@ -119,14 +119,19 @@ trait ConnectionTrait
             try {
                 $tryCallable();
             } catch (Throwable $exception) {
-                $catchCallable();
+                $this->close();
+                $this->connect();
 
-                if ($this->refreshOnException) {
-                    $this->refresh();
+                if ($catchCallable !== null) {
+                    $catchCallable();
                 }
 
                 if (!$this->isGoneAwayException($exception)) {
                     throw $exception;
+                }
+
+                if ($this->refreshOnException) {
+                    $this->refresh();
                 }
 
                 $retry = $attempt < $this->reconnectAttempts;
@@ -168,19 +173,10 @@ trait ConnectionTrait
         return $result;
     }
 
-    /**
-     * @return bool
-     */
-    public function refresh(): bool
+    public function refresh(): void
     {
-        try {
-            $unique = '"' . uniqid('ping_', true) . '"';
-            $this->executeQuery('SELECT ' . $unique);
-        } catch (Throwable $exception) {
-            return false;
-        }
-
-        return true;
+        $unique = '"' . uniqid('ping_', true) . '"';
+        $this->executeQuery('SELECT ' . $unique);
     }
 
     /**
