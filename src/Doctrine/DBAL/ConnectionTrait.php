@@ -187,7 +187,7 @@ trait ConnectionTrait
     protected function handleParams(array $params): void
     {
         $this->setReconnectAttempts((int) ($params['reconnect_attempts'] ?? 0));
-        $this->setRefreshOnException((bool) ($params['refresh_on_exception'] ?? false));
+        $this->setRefreshOnException((bool) filter_var($params['refresh_on_exception'] ?? false, FILTER_VALIDATE_BOOLEAN));
     }
 
     /**

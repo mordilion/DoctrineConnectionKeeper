@@ -19,7 +19,8 @@ return [
                     'dbname' => '***',
                     'charset' => 'UTF8',
                     'connection_keeper' => [
-                        'reconnect_attempts' => 3,                    
+                        'reconnect_attempts' => 3,
+                        'refresh_on_exception' => true,             
                     ],
                 ],
             ],
