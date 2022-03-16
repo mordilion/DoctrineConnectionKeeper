@@ -22,18 +22,13 @@ use Throwable;
  */
 trait ConnectionTrait
 {
-    /**
-     * @var int
-     */
-    private $reconnectAttempts = 0;
+    private int $reconnectAttempts = 0;
 
-    /**
-     * @var bool
-     */
-    private $refreshOnException = false;
+    private bool $refreshOnException = false;
 
     /**
      * @return bool
+     * @throws Throwable
      */
     public function beginTransaction()
     {
@@ -57,6 +52,7 @@ trait ConnectionTrait
      * @param QueryCacheProfile|null $qcp
      *
      * @return ForwardCompatibility\DriverResultStatement|ForwardCompatibility\DriverStatement|ForwardCompatibility\Result
+     * @throws Throwable
      */
     public function executeQuery($sql, array $params = [], $types = [], ?QueryCacheProfile $qcp = null)
     {
@@ -75,6 +71,7 @@ trait ConnectionTrait
      * @param array  $types
      *
      * @return int
+     * @throws Throwable
      */
     public function executeStatement($sql, array $params = [], array $types = [])
     {
@@ -93,6 +90,7 @@ trait ConnectionTrait
      * @param array  $types
      *
      * @return int
+     * @throws Throwable
      */
     public function executeUpdate($sql, array $params = [], array $types = [])
     {
@@ -108,6 +106,8 @@ trait ConnectionTrait
     /**
      * @param callable      $tryCallable
      * @param callable|null $catchCallable
+     *
+     * @throws Throwable
      */
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void
     {
@@ -123,7 +123,7 @@ trait ConnectionTrait
                 $this->connect();
 
                 if ($catchCallable !== null) {
-                    $catchCallable();
+                    $catchCallable($exception);
                 }
 
                 if (!$this->isGoneAwayException($exception)) {
@@ -144,6 +144,7 @@ trait ConnectionTrait
      * @param string $sql
      *
      * @return Statement
+     * @throws \Doctrine\DBAL\Exception
      */
     public function prepare($sql)
     {
@@ -160,6 +161,7 @@ trait ConnectionTrait
 
     /**
      * @return \Doctrine\DBAL\Driver\Statement
+     * @throws Throwable
      */
     public function query()
     {
