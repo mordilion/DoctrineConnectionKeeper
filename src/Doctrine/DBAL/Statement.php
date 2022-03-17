@@ -13,8 +13,11 @@ declare(strict_types=1);
 
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Connection as DBALConnection;
+use Doctrine\DBAL\Result;
 use Doctrine\DBAL\Statement as DBALStatement;
+use Doctrine\DBAL\Driver\Statement as DBALDriverStatement;
 
 /**
  * @author Henning Huncke <mordilion@gmx.de>
@@ -24,24 +27,26 @@ class Statement extends DBALStatement
     /**
      * Statement constructor.
      *
-     * @param string         $sql
-     * @param DBALConnection $conn
+     * @param DBALConnection      $conn
+     * @param DBALDriverStatement $statement
+     * @param string              $sql
+     *
+     * @throws \Doctrine\DBAL\Exception
      */
-    public function __construct($sql, DBALConnection $conn)
+    public function __construct(Connection $conn, DBALDriverStatement $statement, string $sql)
     {
-        parent::__construct($sql, $conn);
+        parent::__construct($conn, $statement, $sql);
     }
 
     /**
-     * @param null $params
+     * @param mixed[]|null $params
      *
-     * @return bool
+     * @return Result
      */
-    public function execute($params = null)
+    public function execute($params = null): Result
     {
         /** @var ConnectionInterface $connection */
         $connection = $this->conn;
-        $result = false;
 
         $connection->handle(function () use (&$result, $params) {
             $result = parent::execute($params);

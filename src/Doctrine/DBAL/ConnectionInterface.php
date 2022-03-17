@@ -13,12 +13,10 @@ declare(strict_types=1);
 
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
-use Doctrine\DBAL\Driver\Connection as DriverConnection;
-
 /**
  * @author Henning Huncke <mordilion@gmx.de>
  */
-interface ConnectionInterface extends DriverConnection
+interface ConnectionInterface
 {
     /**
      * @param callable      $tryCallable

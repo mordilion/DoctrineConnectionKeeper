@@ -36,6 +36,8 @@ class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias
      * @param DBAL\Driver             $driver
      * @param DBAL\Configuration|null $config
      * @param EventManager|null       $eventManager
+     *
+     * @throws DBAL\Exception
      */
     public function __construct(array $params, DBAL\Driver $driver, ?DBAL\Configuration $config = null, ?EventManager $eventManager = null)
     {
@@ -45,15 +47,15 @@ class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias
     }
 
     /**
-     * @param string $statement
+     * @param string $sql
      *
      * @return Statement
      * @throws DBAL\Exception
      */
-    public function prepare($statement)
+    public function prepare(string $sql): Statement
     {
         $this->ensureConnectedToPrimary();
 
-        return $this->traitPrepare($statement);
+        return $this->traitPrepare($sql);
     }
 }

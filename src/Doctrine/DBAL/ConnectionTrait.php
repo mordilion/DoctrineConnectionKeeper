@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\DBAL\Cache\QueryCacheProfile;
-use Doctrine\DBAL\ForwardCompatibility;
+use Doctrine\DBAL\Driver\Exception as DBALDriverException;
+use Doctrine\DBAL\Result;
+use Doctrine\DBAL\Types\Type;
 use Throwable;
 
 /**
@@ -46,18 +48,16 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string                 $sql
-     * @param array                  $params
-     * @param array                  $types
-     * @param QueryCacheProfile|null $qcp
+     * @param string                                                               $sql
+     * @param list<mixed>|array<string, mixed>                                     $params
+     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
+     * @param QueryCacheProfile|null                                               $qcp
      *
-     * @return ForwardCompatibility\DriverResultStatement|ForwardCompatibility\DriverStatement|ForwardCompatibility\Result
+     * @return Result|null
      * @throws Throwable
      */
-    public function executeQuery($sql, array $params = [], $types = [], ?QueryCacheProfile $qcp = null)
+    public function executeQuery(string $sql, array $params = [], $types = [], ?QueryCacheProfile $qcp = null): Result
     {
-        $result = null;
-
         $this->handle(function () use (&$result, $sql, $params, $types, $qcp) {
             $result = parent::executeQuery($sql, $params, $types, $qcp);
         });
@@ -70,7 +70,7 @@ trait ConnectionTrait
      * @param array  $params
      * @param array  $types
      *
-     * @return int
+     * @return int|string
      * @throws Throwable
      */
     public function executeStatement($sql, array $params = [], array $types = [])
@@ -92,7 +92,7 @@ trait ConnectionTrait
      * @return int
      * @throws Throwable
      */
-    public function executeUpdate($sql, array $params = [], array $types = [])
+    public function executeUpdate(string $sql, array $params = [], array $types = []): int
     {
         $result = 0;
 
@@ -107,7 +107,9 @@ trait ConnectionTrait
      * @param callable      $tryCallable
      * @param callable|null $catchCallable
      *
+     * @return void
      * @throws Throwable
+     * @throws \Doctrine\DBAL\Exception
      */
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void
     {
@@ -146,30 +148,31 @@ trait ConnectionTrait
      * @return Statement
      * @throws \Doctrine\DBAL\Exception
      */
-    public function prepare($sql)
+    public function prepare(string $sql): Statement
     {
+        $this->connect();
+        assert($this->_conn !== null);
+
         try {
-            $stmt = new Statement($sql, $this);
-        } catch (Throwable $exception) {
-            $this->handleExceptionDuringQuery($exception, $sql);
+            $statement = $this->_conn->prepare($sql);
+        } catch (DBALDriverException $exception) {
+            throw $this->convertExceptionDuringQuery($exception, $sql);
         }
 
-        $stmt->setFetchMode($this->defaultFetchMode);
-
-        return $stmt;
+        return new Statement($this, $statement, $sql);
     }
 
     /**
-     * @return \Doctrine\DBAL\Driver\Statement
+     * @param string $sql
+     *
+     * @return Result
      * @throws Throwable
+     * @throws \Doctrine\DBAL\Exception
      */
-    public function query()
+    public function query(string $sql): Result
     {
-        $result = null;
-        $args = func_get_args();
-
-        $this->handle(function () use (&$result, $args) {
-            $result = parent::query(...$args);
+        $this->handle(function () use (&$result, $sql) {
+            $result = parent::query($sql);
         });
 
         return $result;
