@@ -26,14 +26,7 @@ class Connection extends DBALConnection implements ConnectionInterface
     use ConnectionTrait;
 
     /**
-     * Connection constructor.
-     *
-     * @param array              $params
-     * @param Driver             $driver
-     * @param Configuration|null $config
-     * @param EventManager|null  $eventManager
-     *
-     * @throws \Doctrine\DBAL\Exception
+     * {@inheritDoc}
      */
     public function __construct(array $params, Driver $driver, ?Configuration $config = null, ?EventManager $eventManager = null)
     {

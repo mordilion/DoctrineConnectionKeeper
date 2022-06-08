@@ -29,8 +29,7 @@ trait ConnectionTrait
     private bool $refreshOnException = false;
 
     /**
-     * @return bool
-     * @throws Throwable
+     * {@inheritDoc}
      */
     public function beginTransaction()
     {
@@ -48,13 +47,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string                                                               $sql
-     * @param list<mixed>|array<string, mixed>                                     $params
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
-     * @param QueryCacheProfile|null                                               $qcp
-     *
-     * @return Result|null
-     * @throws Throwable
+     * {@inheritDoc}
      */
     public function executeQuery(string $sql, array $params = [], $types = [], ?QueryCacheProfile $qcp = null): Result
     {
@@ -66,12 +59,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string $sql
-     * @param array  $params
-     * @param array  $types
-     *
-     * @return int|string
-     * @throws Throwable
+     * {@inheritDoc}
      */
     public function executeStatement($sql, array $params = [], array $types = [])
     {
@@ -85,12 +73,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string $sql
-     * @param array  $params
-     * @param array  $types
-     *
-     * @return int
-     * @throws Throwable
+     * {@inheritDoc}
      */
     public function executeUpdate(string $sql, array $params = [], array $types = []): int
     {
@@ -114,26 +97,28 @@ trait ConnectionTrait
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void
     {
         $attempt = 0;
+        $tryClosure = \Closure::fromCallable($tryCallable);
+        $catchClosure = $catchCallable ? \Closure::fromCallable($catchCallable) : null;
 
         do {
             $retry = false;
 
             try {
-                $tryCallable();
+                $tryClosure();
             } catch (Throwable $exception) {
                 $this->close();
                 $this->connect();
 
-                if ($catchCallable !== null) {
-                    $catchCallable($exception);
-                }
-
-                if (!$this->isGoneAwayException($exception)) {
-                    throw $exception;
+                if ($catchClosure !== null) {
+                    $catchClosure($exception);
                 }
 
                 if ($this->refreshOnException) {
                     $this->refresh();
+                }
+
+                if (!$this->isGoneAwayException($exception)) {
+                    throw $exception;
                 }
 
                 $retry = $attempt < $this->reconnectAttempts;
@@ -163,11 +148,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string $sql
-     *
-     * @return Result
-     * @throws Throwable
-     * @throws \Doctrine\DBAL\Exception
+     * {@inheritDoc}
      */
     public function query(string $sql): Result
     {

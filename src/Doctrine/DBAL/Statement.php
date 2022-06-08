@@ -25,13 +25,7 @@ use Doctrine\DBAL\Driver\Statement as DBALDriverStatement;
 class Statement extends DBALStatement
 {
     /**
-     * Statement constructor.
-     *
-     * @param DBALConnection      $conn
-     * @param DBALDriverStatement $statement
-     * @param string              $sql
-     *
-     * @throws \Doctrine\DBAL\Exception
+     * {@inheritDoc}
      */
     public function __construct(Connection $conn, DBALDriverStatement $statement, string $sql)
     {
@@ -39,9 +33,7 @@ class Statement extends DBALStatement
     }
 
     /**
-     * @param mixed[]|null $params
-     *
-     * @return Result
+     * {@inheritDoc}
      */
     public function execute($params = null): Result
     {
