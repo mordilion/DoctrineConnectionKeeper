@@ -16,7 +16,6 @@ namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Doctrine\DBAL\Driver\Exception as DBALDriverException;
 use Doctrine\DBAL\Result;
-use Doctrine\DBAL\Types\Type;
 use Throwable;
 
 /**
@@ -113,12 +112,12 @@ trait ConnectionTrait
                     $catchClosure($exception);
                 }
 
-                if ($this->refreshOnException) {
-                    $this->refresh();
-                }
-
                 if (!$this->isGoneAwayException($exception)) {
                     throw $exception;
+                }
+
+                if ($this->refreshOnException) {
+                    $this->refresh();
                 }
 
                 $retry = $attempt < $this->reconnectAttempts;
@@ -159,6 +158,9 @@ trait ConnectionTrait
         return $result;
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function refresh(): void
     {
         $unique = '"' . uniqid('ping_', true) . '"';
@@ -172,6 +174,11 @@ trait ConnectionTrait
     {
         $this->setReconnectAttempts((int) ($params['reconnect_attempts'] ?? 0));
         $this->setRefreshOnException((bool) filter_var($params['refresh_on_exception'] ?? false, FILTER_VALIDATE_BOOLEAN));
+    }
+
+    public function getReconnectAttempts(): int
+    {
+        return $this->reconnectAttempts;
     }
 
     /**
