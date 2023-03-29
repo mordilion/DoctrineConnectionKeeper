@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Connection as DBALConnection;
 use Doctrine\DBAL\Result;
 use Doctrine\DBAL\Statement as DBALStatement;
 use Doctrine\DBAL\Driver\Statement as DBALDriverStatement;

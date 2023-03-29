@@ -15,6 +15,7 @@ namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Doctrine\DBAL\Driver\Exception as DBALDriverException;
+use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\DBAL\Result;
 use Throwable;
 
@@ -23,6 +24,8 @@ use Throwable;
  */
 trait ConnectionTrait
 {
+    private bool $handleRetryableExceptions = false;
+
     private int $reconnectAttempts = 0;
 
     private bool $refreshOnException = false;
@@ -86,10 +89,6 @@ trait ConnectionTrait
     }
 
     /**
-     * @param callable      $tryCallable
-     * @param callable|null $catchCallable
-     *
-     * @return void
      * @throws Throwable
      * @throws \Doctrine\DBAL\Exception
      */
@@ -112,7 +111,9 @@ trait ConnectionTrait
                     $catchClosure($exception);
                 }
 
-                if (!$this->isGoneAwayException($exception)) {
+                if (!$this->isGoneAwayException($exception)
+                    && !($this->handleRetryableExceptions && $this->isRetryableException($exception))
+                ) {
                     throw $exception;
                 }
 
@@ -127,9 +128,6 @@ trait ConnectionTrait
     }
 
     /**
-     * @param string $sql
-     *
-     * @return Statement
      * @throws \Doctrine\DBAL\Exception
      */
     public function prepare(string $sql): Statement
@@ -167,11 +165,9 @@ trait ConnectionTrait
         $this->executeQuery('SELECT ' . $unique);
     }
 
-    /**
-     * @param array $params
-     */
     protected function handleParams(array $params): void
     {
+        $this->setHandleRetryableExceptions((bool) filter_var($params['handle_retryable_exceptions'] ?? false, FILTER_VALIDATE_BOOLEAN));
         $this->setReconnectAttempts((int) ($params['reconnect_attempts'] ?? 0));
         $this->setRefreshOnException((bool) filter_var($params['refresh_on_exception'] ?? false, FILTER_VALIDATE_BOOLEAN));
     }
@@ -181,33 +177,28 @@ trait ConnectionTrait
         return $this->reconnectAttempts;
     }
 
-    /**
-     * @param int $reconnectAttempts
-     */
+    protected function setHandleRetryableExceptions(bool $handleRetryableExceptions): void
+    {
+        $this->handleRetryableExceptions = $handleRetryableExceptions;
+    }
+
     protected function setReconnectAttempts(int $reconnectAttempts): void
     {
         $this->reconnectAttempts = $reconnectAttempts;
     }
 
-    /**
-     * @param bool $refreshOnException
-     */
     protected function setRefreshOnException(bool $refreshOnException): void
     {
         $this->refreshOnException = $refreshOnException;
     }
 
-    /**
-     * @param Throwable $exception
-     *
-     * @return bool
-     */
     private function isGoneAwayException(Throwable $exception): bool
     {
         $exceptionMessage = $exception->getMessage();
         $messages = [
             'MySQL server has gone away',
             'Lost connection to MySQL server during query',
+            'Error while sending QUERY packet',
         ];
 
         foreach ($messages as $message) {
@@ -217,5 +208,10 @@ trait ConnectionTrait
         }
 
         return false;
+    }
+
+    private function isRetryableException(Throwable $exception): bool
+    {
+        return $exception instanceof RetryableException;
     }
 }
