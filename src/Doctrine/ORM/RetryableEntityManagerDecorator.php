@@ -87,6 +87,10 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         return $result;
     }
 
+    /**
+     * @throws RetryableException
+     * @throws EntityManagerClosed
+     */
     private function handle(callable $tryCallable)
     {
         $attempt = 0;
@@ -102,6 +106,10 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
                 $retry = $attempt < $this->retryAttempts;
                 $attempt++;
+
+                if (!$retry) {
+                    throw $exception;
+                }
             }
         } while ($retry);
     }

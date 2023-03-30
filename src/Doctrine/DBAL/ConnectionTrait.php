@@ -123,6 +123,10 @@ trait ConnectionTrait
 
                 $retry = $attempt < $this->reconnectAttempts;
                 $attempt++;
+
+                if (!$retry) {
+                    throw $exception;
+                }
             }
         } while ($retry);
     }
