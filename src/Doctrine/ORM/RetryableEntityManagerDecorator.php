@@ -32,13 +32,16 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
     private int $retryAttempts;
 
-    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, int $retryAttempts = 1)
+    private ?string $wrappedName;
+
+    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, int $retryAttempts = 1, ?string $wrappedName = null)
     {
         parent::__construct($wrapped);
 
         $this->registry = $registry;
         $this->repositoryFactory = $wrapped->getConfiguration()->getRepositoryFactory();
         $this->retryAttempts = $retryAttempts;
+        $this->wrappedName = $wrappedName;
     }
 
     /**
@@ -94,7 +97,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
             try {
                 $tryClosure();
             } catch (RetryableException $exception) {
-                $this->wrapped = $this->registry->resetManager();
+                $this->wrapped = $this->registry->resetManager($this->wrappedName);
 
                 $retry = $attempt < $this->retryAttempts;
                 $attempt++;
