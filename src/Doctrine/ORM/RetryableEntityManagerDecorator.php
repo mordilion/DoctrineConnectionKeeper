@@ -21,6 +21,7 @@ use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\Repository\RepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectRepository;
+use Throwable;
 
 /**
  * @author Henning Huncke <mordilion@gmx.de>
@@ -59,13 +60,15 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      * @param callable $func
      *
      * @return mixed
+     * @throws EntityManagerClosed
+     * @throws RetryableException
      */
     public function transactional($func)
     {
-        $result = 0;
+        $result = null;
 
         $this->handle(function () use (&$result, $func) {
-            $result = parent::transactional($func);
+            $result = $this->internalWrapInTransaction($func);
         });
 
         return $result;
@@ -75,13 +78,15 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      * @param callable $func
      *
      * @return mixed
+     * @throws EntityManagerClosed
+     * @throws RetryableException
      */
     public function wrapInTransaction($func)
     {
-        $result = 0;
+        $result = null;
 
         $this->handle(function () use (&$result, $func) {
-            $result = parent::wrapInTransaction($func);
+            $result = $this->internalWrapInTransaction($func);
         });
 
         return $result;
@@ -112,5 +117,30 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                 }
             }
         } while ($retry);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function internalWrapInTransaction(callable $func)
+    {
+        $this->beginTransaction();
+
+        try {
+            $result = $func($this);
+
+            $this->flush();
+            $this->commit();
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->close();
+
+            if ($this->getConnection()->isTransactionActive()) {
+                $this->rollBack();
+            }
+
+            throw $exception;
+        }
     }
 }
