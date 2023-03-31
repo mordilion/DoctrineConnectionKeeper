@@ -85,6 +85,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      */
     private function handle(callable $tryCallable)
     {
+        $result = null;
         $attempt = 0;
         $tryClosure = \Closure::fromCallable($tryCallable);
 
