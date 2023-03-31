@@ -113,7 +113,9 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     throw $exception;
                 }
             } catch (Throwable $exception) {
-                $this->rollback();
+                if ($this->getConnection()->isTransactionActive()) {
+                    $this->rollback();
+                }
 
                 throw $exception;
             }
