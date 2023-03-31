@@ -17,7 +17,6 @@ use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\Decorator\EntityManagerDecorator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\Repository\RepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectRepository;
@@ -60,41 +59,29 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      * @param callable $func
      *
      * @return mixed
-     * @throws EntityManagerClosed
      * @throws RetryableException
+     * @throws Throwable
      */
     public function transactional($func)
     {
-        $result = null;
-
-        $this->handle(function () use (&$result, $func) {
-            $result = $this->internalWrapInTransaction($func);
-        });
-
-        return $result;
+        return $this->handle($func);
     }
 
     /**
      * @param callable $func
      *
      * @return mixed
-     * @throws EntityManagerClosed
      * @throws RetryableException
+     * @throws Throwable
      */
     public function wrapInTransaction($func)
     {
-        $result = null;
-
-        $this->handle(function () use (&$result, $func) {
-            $result = $this->internalWrapInTransaction($func);
-        });
-
-        return $result;
+        return $this->handle($func);
     }
 
     /**
      * @throws RetryableException
-     * @throws EntityManagerClosed
+     * @throws Throwable
      */
     private function handle(callable $tryCallable)
     {
@@ -103,10 +90,16 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
         do {
             $retry = false;
+            $this->beginTransaction();
 
             try {
-                $tryClosure();
-            } catch (RetryableException|EntityManagerClosed $exception) {
+                $result = $tryClosure($this);
+
+                $this->flush();
+                $this->commit();
+            } catch (RetryableException $exception) {
+                $this->rollback();
+                $this->close();
                 $this->wrapped = $this->registry->resetManager($this->wrappedName);
 
                 $retry = $attempt < $this->retryAttempts;
@@ -115,8 +108,14 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                 if (!$retry) {
                     throw $exception;
                 }
+            } catch (Throwable $exception) {
+                $this->rollback();
+
+                throw $exception;
             }
         } while ($retry);
+
+        return $result;
     }
 
     /**
@@ -124,10 +123,11 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      */
     private function internalWrapInTransaction(callable $func)
     {
+        $tryClosure = \Closure::fromCallable($func);
         $this->beginTransaction();
 
         try {
-            $result = $func($this);
+            $result = $tryClosure($this);
 
             $this->flush();
             $this->commit();
