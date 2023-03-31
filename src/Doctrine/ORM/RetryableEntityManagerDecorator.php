@@ -99,7 +99,10 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                 $this->flush();
                 $this->commit();
             } catch (RetryableException $exception) {
-                $this->rollback();
+                if ($this->getConnection()->isTransactionActive()) {
+                    $this->rollback();
+                }
+
                 $this->close();
                 $this->wrapped = $this->registry->resetManager($this->wrappedName);
 
@@ -117,31 +120,5 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         } while ($retry);
 
         return $result;
-    }
-
-    /**
-     * @throws Throwable
-     */
-    private function internalWrapInTransaction(callable $func)
-    {
-        $tryClosure = \Closure::fromCallable($func);
-        $this->beginTransaction();
-
-        try {
-            $result = $tryClosure($this);
-
-            $this->flush();
-            $this->commit();
-
-            return $result;
-        } catch (Throwable $exception) {
-            $this->close();
-
-            if ($this->getConnection()->isTransactionActive()) {
-                $this->rollBack();
-            }
-
-            throw $exception;
-        }
     }
 }
