@@ -17,6 +17,7 @@ use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\Decorator\EntityManagerDecorator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\Repository\RepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectRepository;
@@ -98,7 +99,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
                 $this->flush();
                 $this->commit();
-            } catch (RetryableException $exception) {
+            } catch (RetryableException|EntityManagerClosed $exception) {
                 if ($this->getConnection()->isTransactionActive()) {
                     $this->rollback();
                 }
