@@ -71,7 +71,6 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      * @param callable $func
      *
      * @return mixed
-     * @throws RetryableException
      * @throws Throwable
      */
     public function transactional($func)
@@ -83,7 +82,6 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
      * @param callable $func
      *
      * @return mixed
-     * @throws RetryableException
      * @throws Throwable
      */
     public function wrapInTransaction($func)
@@ -92,7 +90,6 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
     }
 
     /**
-     * @throws RetryableException
      * @throws Throwable
      */
     private function handle(callable $tryCallable)
@@ -108,14 +105,19 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
             try {
                 $result = $tryClosure($this);
 
-                $this->flush();
-                $this->commit();
+                if ($this->getConnection()->isTransactionActive()) {
+                    $this->flush();
+                    $this->commit();
+                }
             } catch (RetryableException|EntityManagerClosed $exception) {
                 if ($this->getConnection()->isTransactionActive()) {
                     $this->rollback();
                 }
 
-                $this->close();
+                if (!$this->isOpen()) {
+                    $this->close();
+                }
+
                 $this->wrapped = $this->registry->resetManager($this->wrappedName);
 
                 $retry = $attempt < $this->retryAttempts;
