@@ -56,17 +56,6 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         return $this->repositoryFactory->getRepository($this, $className);
     }
 
-    public function register(object $entity, mixed $identifier): void
-    {
-        $class = $this->getMetadataFactory()->getMetadataFor(ltrim(get_class($entity), '\\'));
-
-        if (!is_array($identifier)) {
-            $identifier = [$class->identifier[0] => $identifier];
-        }
-
-        $this->getUnitOfWork()->registerManaged($entity, $identifier, []);
-    }
-
     /**
      * @param callable $func
      *
