@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
+use Closure;
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Doctrine\DBAL\Driver\Exception as DBALDriverException;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\DBAL\Result;
 use Throwable;
@@ -90,13 +92,13 @@ trait ConnectionTrait
 
     /**
      * @throws Throwable
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void
     {
         $attempt = 0;
-        $tryClosure = \Closure::fromCallable($tryCallable);
-        $catchClosure = $catchCallable ? \Closure::fromCallable($catchCallable) : null;
+        $tryClosure = Closure::fromCallable($tryCallable);
+        $catchClosure = $catchCallable ? Closure::fromCallable($catchCallable) : null;
 
         do {
             $retry = false;
@@ -132,7 +134,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function prepare(string $sql): Statement
     {
@@ -161,7 +163,7 @@ trait ConnectionTrait
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function refresh(): void
     {

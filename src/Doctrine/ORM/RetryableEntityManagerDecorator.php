@@ -2,10 +2,8 @@
 
 /**
  * This file is part of the DoctrineConnectionKeeper package.
- *
  * For the full copyright and license information, please view the
  * LICENSE file that was distributed with this source code.
- *
  * @copyright (c) Henning Huncke - <mordilion@gmx.de>
  */
 
@@ -13,6 +11,7 @@ declare(strict_types=1);
 
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\ORM;
 
+use Closure;
 use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\Decorator\EntityManagerDecorator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,17 +31,18 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
     private RepositoryFactory $repositoryFactory;
 
-    private int $retryAttempts;
+    private int $retryAttempts = 1;
+
+    private int $retrySleepMicroseconds = 50;
 
     private ?string $wrappedName;
 
-    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, int $retryAttempts = 1, ?string $wrappedName = null)
+    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, ?string $wrappedName = null)
     {
         parent::__construct($wrapped);
 
         $this->registry = $registry;
         $this->repositoryFactory = $wrapped->getConfiguration()->getRepositoryFactory();
-        $this->retryAttempts = $retryAttempts;
         $this->wrappedName = $wrappedName;
     }
 
@@ -54,6 +54,31 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
     public function getRepository($className)
     {
         return $this->repositoryFactory->getRepository($this, $className);
+    }
+
+    public function getRetryAttempts(): int
+    {
+        return $this->retryAttempts;
+    }
+
+    public function getRetrySleepMicroseconds(): int
+    {
+        return $this->retrySleepMicroseconds;
+    }
+
+    public function setRetryAttempts(int $retryAttempts): void
+    {
+        $this->retryAttempts = $retryAttempts;
+    }
+
+    public function setRetrySleepMicroseconds(int $retrySleepMicroseconds): void
+    {
+        $this->retrySleepMicroseconds = $retrySleepMicroseconds;
+    }
+
+    public function getWrappedName(): ?string
+    {
+        return $this->wrappedName;
     }
 
     /**
@@ -85,7 +110,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
     {
         $result = null;
         $attempt = 0;
-        $tryClosure = \Closure::fromCallable($tryCallable);
+        $tryClosure = Closure::fromCallable($tryCallable);
 
         do {
             $retry = false;
@@ -115,6 +140,8 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                 if (!$retry) {
                     throw $exception;
                 }
+
+                usleep($this->retrySleepMicroseconds);
             } catch (Throwable $exception) {
                 if ($this->getConnection()->isTransactionActive()) {
                     $this->rollback();
