@@ -132,7 +132,8 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     $this->close();
                 }
 
-                $this->wrapped = $this->registry->resetManager($this->wrappedName);
+                $this->registry->resetManager($this->wrappedName);
+                $this->wrapped = $this->registry->getManager($this->wrappedName);
 
                 $retry = $attempt < $this->retryAttempts;
                 $attempt++;
