@@ -128,7 +128,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     $this->rollback();
                 }
 
-                if (!$this->isOpen()) {
+                if ($this->isOpen()) {
                     $this->close();
                 }
 
