@@ -81,6 +81,11 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         return $this->wrappedName;
     }
 
+    public function merge($object)
+    {
+        $this->wrapped->merge($object);
+    }
+
     /**
      * @param callable $func
      *
