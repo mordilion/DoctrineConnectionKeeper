@@ -31,18 +31,19 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
 
     private RepositoryFactory $repositoryFactory;
 
-    private int $retryAttempts = 1;
+    private int $retryAttempts;
 
     private int $retrySleepMicroseconds = 50;
 
     private ?string $wrappedName;
 
-    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, ?string $wrappedName = null)
+    public function __construct(EntityManagerInterface $wrapped, ManagerRegistry $registry, int $retryAttempts = 1, ?string $wrappedName = null)
     {
         parent::__construct($wrapped);
 
         $this->registry = $registry;
         $this->repositoryFactory = $wrapped->getConfiguration()->getRepositoryFactory();
+        $this->retryAttempts = $retryAttempts;
         $this->wrappedName = $wrappedName;
     }
 
@@ -124,6 +125,13 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     $this->commit();
                 }
             } catch (RetryableException|EntityManagerClosed $exception) {
+                $retry = $attempt < $this->retryAttempts;
+                $attempt++;
+
+                if (!$retry) {
+                    throw $exception;
+                }
+
                 if ($this->getConnection()->isTransactionActive()) {
                     $this->rollback();
                 }
@@ -132,15 +140,7 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     $this->close();
                 }
 
-                $this->registry->resetManager($this->wrappedName);
-                $this->wrapped = $this->registry->getManager($this->wrappedName);
-
-                $retry = $attempt < $this->retryAttempts;
-                $attempt++;
-
-                if (!$retry) {
-                    throw $exception;
-                }
+                $this->wrapped = $this->registry->resetManager($this->wrappedName);
 
                 usleep($this->retrySleepMicroseconds);
             } catch (Throwable $exception) {

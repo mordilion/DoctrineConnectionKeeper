@@ -26,6 +26,7 @@ use Throwable;
  */
 trait ConnectionTrait
 {
+    private bool $closedWithOpenTransaction = false;
     private bool $handleRetryableExceptions = false;
 
     private int $reconnectAttempts = 0;
@@ -37,7 +38,7 @@ trait ConnectionTrait
      */
     public function beginTransaction()
     {
-        if (0 !== $this->getTransactionNestingLevel()) {
+        if ($this->closedWithOpenTransaction || $this->getTransactionNestingLevel() !== 0) {
             return parent::beginTransaction();
         }
 
@@ -48,6 +49,28 @@ trait ConnectionTrait
         });
 
         return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function close()
+    {
+        if ($this->getTransactionNestingLevel() > 0) {
+            $this->closedWithOpenTransaction = true;
+        }
+
+        parent::close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function connect($connectionName = null)
+    {
+        $this->closedWithOpenTransaction = false;
+
+        return parent::connect($connectionName);
     }
 
     /**
@@ -106,28 +129,25 @@ trait ConnectionTrait
             try {
                 $tryClosure();
             } catch (Throwable $exception) {
-                $this->close();
-                $this->connect();
-
                 if ($catchClosure !== null) {
                     $catchClosure($exception);
-                }
-
-                if (!$this->isGoneAwayException($exception)
-                    && !($this->handleRetryableExceptions && $this->isRetryableException($exception))
-                ) {
-                    throw $exception;
-                }
-
-                if ($this->refreshOnException) {
-                    $this->refresh();
                 }
 
                 $retry = $attempt < $this->reconnectAttempts;
                 $attempt++;
 
-                if (!$retry) {
+                if ($this->closedWithOpenTransaction
+                    || !$retry
+                    || (!$this->isGoneAwayException($exception) && !$this->isRetryableException($exception))
+                ) {
                     throw $exception;
+                }
+
+                $this->close();
+                $this->connect();
+
+                if ($this->refreshOnException) {
+                    $this->refresh();
                 }
             }
         } while ($retry);
@@ -218,6 +238,10 @@ trait ConnectionTrait
 
     private function isRetryableException(Throwable $exception): bool
     {
+        if (!$this->handleRetryableExceptions) {
+            return false;
+        }
+
         return $exception instanceof RetryableException;
     }
 }
