@@ -27,6 +27,7 @@ use Throwable;
 trait ConnectionTrait
 {
     private bool $closedWithOpenTransaction = false;
+
     private bool $handleRetryableExceptions = false;
 
     private int $reconnectAttempts = 0;
