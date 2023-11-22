@@ -27,6 +27,11 @@ use Throwable;
  */
 class RetryableEntityManagerDecorator extends EntityManagerDecorator
 {
+    /**
+     * @var callable|null
+     */
+    private $catchCallable = null;
+
     private ManagerRegistry $registry;
 
     private RepositoryFactory $repositoryFactory;
@@ -45,6 +50,11 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         $this->repositoryFactory = $wrapped->getConfiguration()->getRepositoryFactory();
         $this->retryAttempts = $retryAttempts;
         $this->wrappedName = $wrappedName;
+    }
+
+    public function getCatchCallable(): ?callable
+    {
+        return $this->catchCallable;
     }
 
     /**
@@ -67,6 +77,16 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
         return $this->retrySleepMicroseconds;
     }
 
+    public function getWrappedName(): ?string
+    {
+        return $this->wrappedName;
+    }
+
+    public function setCatchCallable(?callable $catchCallable): void
+    {
+        $this->catchCallable = $catchCallable;
+    }
+
     public function setRetryAttempts(int $retryAttempts): void
     {
         $this->retryAttempts = $retryAttempts;
@@ -75,11 +95,6 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
     public function setRetrySleepMicroseconds(int $retrySleepMicroseconds): void
     {
         $this->retrySleepMicroseconds = $retrySleepMicroseconds;
-    }
-
-    public function getWrappedName(): ?string
-    {
-        return $this->wrappedName;
     }
 
     /**
@@ -107,11 +122,12 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
     /**
      * @throws Throwable
      */
-    private function handle(callable $tryCallable)
+    private function handle(callable $tryCallable, ?callable $catchCallable = null)
     {
         $result = null;
         $attempt = 0;
         $tryClosure = Closure::fromCallable($tryCallable);
+        $catchClosure = $catchCallable ? Closure::fromCallable($catchCallable) : null;
 
         do {
             $retry = false;
@@ -125,6 +141,10 @@ class RetryableEntityManagerDecorator extends EntityManagerDecorator
                     $this->commit();
                 }
             } catch (RetryableException|EntityManagerClosed $exception) {
+                if ($catchClosure !== null) {
+                    $catchClosure($exception);
+                }
+
                 $retry = $attempt < $this->retryAttempts;
                 $attempt++;
 

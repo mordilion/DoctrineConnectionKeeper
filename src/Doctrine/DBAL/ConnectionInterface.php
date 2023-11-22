@@ -19,4 +19,8 @@ namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 interface ConnectionInterface
 {
     public function handle(callable $tryCallable, ?callable $catchCallable = null): void;
+
+    public function getCatchCallable(): ?callable;
+
+    public function setCatchCallable(?callable $catchCallable): void;
 }

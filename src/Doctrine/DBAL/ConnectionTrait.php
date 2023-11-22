@@ -14,7 +14,10 @@ declare(strict_types=1);
 namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL;
 
 use Closure;
+use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Cache\QueryCacheProfile;
+use Doctrine\DBAL\Configuration;
+use Doctrine\DBAL\Driver;
 use Doctrine\DBAL\Driver\Exception as DBALDriverException;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\RetryableException;
@@ -26,6 +29,11 @@ use Throwable;
  */
 trait ConnectionTrait
 {
+    /**
+     * @var callable|null
+     */
+    private $catchCallable = null;
+
     private bool $closedWithOpenTransaction = false;
 
     private bool $handleRetryableExceptions = false;
@@ -33,6 +41,16 @@ trait ConnectionTrait
     private int $reconnectAttempts = 0;
 
     private bool $refreshOnException = false;
+
+    /**
+     * {@inheritDoc}
+     */
+    public function __construct(array $params, Driver $driver, ?Configuration $config = null, ?EventManager $eventManager = null)
+    {
+        $this->handleParams($params['connection_keeper'] ?? []);
+
+        parent::__construct($params, $driver, $config, $eventManager);
+    }
 
     /**
      * {@inheritDoc}
@@ -47,7 +65,7 @@ trait ConnectionTrait
 
         $this->handle(function () use (&$result) {
             $result = parent::beginTransaction();
-        });
+        }, $this->catchCallable);
 
         return $result;
     }
@@ -81,7 +99,7 @@ trait ConnectionTrait
     {
         $this->handle(function () use (&$result, $sql, $params, $types, $qcp) {
             $result = parent::executeQuery($sql, $params, $types, $qcp);
-        });
+        }, $this->catchCallable);
 
         return $result;
     }
@@ -95,7 +113,7 @@ trait ConnectionTrait
 
         $this->handle(function () use (&$result, $sql, $params, $types) {
             $result = parent::executeStatement($sql, $params, $types);
-        });
+        }, $this->catchCallable);
 
         return $result;
     }
@@ -109,9 +127,19 @@ trait ConnectionTrait
 
         $this->handle(function () use (&$result, $sql, $params, $types) {
             $result = parent::executeUpdate($sql, $params, $types);
-        });
+        }, $this->catchCallable);
 
         return $result;
+    }
+
+    public function getCatchCallable(): ?callable
+    {
+        return $this->catchCallable;
+    }
+
+    public function getReconnectAttempts(): int
+    {
+        return $this->reconnectAttempts;
     }
 
     /**
@@ -178,7 +206,7 @@ trait ConnectionTrait
     {
         $this->handle(function () use (&$result, $sql) {
             $result = parent::query($sql);
-        });
+        }, $this->catchCallable);
 
         return $result;
     }
@@ -192,16 +220,16 @@ trait ConnectionTrait
         $this->executeQuery('SELECT ' . $unique);
     }
 
+    public function setCatchCallable(?callable $catchCallable): void
+    {
+        $this->catchCallable = $catchCallable;
+    }
+
     protected function handleParams(array $params): void
     {
         $this->setHandleRetryableExceptions((bool) filter_var($params['handle_retryable_exceptions'] ?? false, FILTER_VALIDATE_BOOLEAN));
         $this->setReconnectAttempts((int) ($params['reconnect_attempts'] ?? 0));
         $this->setRefreshOnException((bool) filter_var($params['refresh_on_exception'] ?? false, FILTER_VALIDATE_BOOLEAN));
-    }
-
-    public function getReconnectAttempts(): int
-    {
-        return $this->reconnectAttempts;
     }
 
     protected function setHandleRetryableExceptions(bool $handleRetryableExceptions): void

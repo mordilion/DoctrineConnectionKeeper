@@ -41,7 +41,7 @@ class Statement extends DBALStatement
 
         $connection->handle(function () use (&$result, $params) {
             $result = parent::execute($params);
-        });
+        }, $connection->getCatchCallable());
 
         return $result;
     }
