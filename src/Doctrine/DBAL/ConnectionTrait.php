@@ -172,7 +172,7 @@ trait ConnectionTrait
                     throw $exception;
                 }
 
-                $this->close();
+                $this->closeDuringRetry();
                 $this->connect();
 
                 if ($this->refreshOnException) {
@@ -245,6 +245,15 @@ trait ConnectionTrait
     protected function setRefreshOnException(bool $refreshOnException): void
     {
         $this->refreshOnException = $refreshOnException;
+    }
+
+    public function closeDuringRetry()
+    {
+        if ($this->getTransactionNestingLevel() > 0) {
+            $this->closedWithOpenTransaction = true;
+        }
+
+        $this->_conn = null;
     }
 
     private function isGoneAwayException(Throwable $exception): bool
