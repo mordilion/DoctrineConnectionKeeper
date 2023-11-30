@@ -16,11 +16,21 @@ namespace Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\Connections;
 use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection as DBALPrimaryReadReplicaConnectionAlias;
 use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\ConnectionInterface;
 use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\ConnectionTrait;
+use Mordilion\DoctrineConnectionKeeper\Doctrine\DBAL\Statement;
 
 /**
  * @author Henning Huncke <mordilion@gmx.de>
  */
 class PrimaryReadReplicaConnection extends DBALPrimaryReadReplicaConnectionAlias implements ConnectionInterface
 {
-    use ConnectionTrait;
+    use ConnectionTrait {
+        ConnectionTrait::prepare as traitPrepare;
+    }
+
+    public function prepare(string $sql): Statement
+    {
+        $this->ensureConnectedToPrimary();
+
+        return $this->traitPrepare($sql);
+    }
 }
